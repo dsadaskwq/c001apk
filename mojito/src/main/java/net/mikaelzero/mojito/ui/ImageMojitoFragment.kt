@@ -102,14 +102,9 @@ class ImageMojitoFragment : Fragment(), IMojitoFragment, OnMojitoViewCallback {
 
         contentLoader?.onTapCallback(object : OnTapCallback {
             override fun onTap(view: View, x: Float, y: Float) {
-                backToMin()
                 ImageMojitoActivity.onMojitoListener?.onClick(view, x, y, fragmentConfig.position)
             }
         })
-        binding.loadingLayout.setOnClickListener {
-            backToMin()
-            ImageMojitoActivity.onMojitoListener?.onClick(view, 0f, 0f, fragmentConfig.position)
-        }
         contentLoader?.onLongTapCallback(object : OnLongTapCallback {
             override fun onLongTap(view: View, x: Float, y: Float) {
                 if (!binding.mojitoView.isDrag) {

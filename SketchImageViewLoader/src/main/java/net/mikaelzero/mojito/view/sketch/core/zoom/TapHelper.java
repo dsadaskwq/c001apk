@@ -17,62 +17,82 @@
 package net.mikaelzero.mojito.view.sketch.core.zoom;
 
 import android.content.Context;
-import android.view.GestureDetector;
+import android.os.Handler;
+import android.os.Looper;
 import android.view.MotionEvent;
 import android.view.View;
+import android.view.ViewConfiguration;
 import android.widget.ImageView;
 
 import androidx.annotation.NonNull;
 
-import net.mikaelzero.mojito.view.sketch.core.util.SketchUtils;
 import net.mikaelzero.mojito.view.sketch.core.viewfun.FunctionCallbackView;
 
-class TapHelper extends GestureDetector.SimpleOnGestureListener {
+class TapHelper {
+
+    private static final int LONG_PRESS_TIMEOUT = 400;
 
     @NonNull
-    private ImageZoomer imageZoomer;
+    private final ImageZoomer imageZoomer;
     @NonNull
-    private GestureDetector tapGestureDetector;
+    private final Handler mainHandler;
+    private final float longPressSlop;
+
+    private float downX;
+    private float downY;
+    private boolean isLongPressTriggered = false;
+    private MotionEvent downEvent = null;
+
+    private final Runnable longPressRunnable = new Runnable() {
+        @Override
+        public void run() {
+            if (!isLongPressTriggered && downEvent != null) {
+                isLongPressTriggered = true;
+                performLongPress(downEvent);
+            }
+        }
+    };
 
     TapHelper(@NonNull Context appContext, @NonNull ImageZoomer imageZoomer) {
         this.imageZoomer = imageZoomer;
-        this.tapGestureDetector = new GestureDetector(appContext, this);
+        this.mainHandler = new Handler(Looper.getMainLooper());
+        this.longPressSlop = ViewConfiguration.get(appContext).getScaledTouchSlop() * 2f;
     }
 
     boolean onTouchEvent(@NonNull MotionEvent event) {
-        return tapGestureDetector.onTouchEvent(event);
-    }
+        switch (event.getAction()) {
+            case MotionEvent.ACTION_DOWN:
+                downX = event.getX();
+                downY = event.getY();
+                isLongPressTriggered = false;
+                if (downEvent != null) {
+                    downEvent.recycle();
+                }
+                downEvent = MotionEvent.obtain(event);
+                mainHandler.postDelayed(longPressRunnable, LONG_PRESS_TIMEOUT);
+                break;
 
-    @Override
-    public boolean onDown(@NonNull MotionEvent e) {
+            case MotionEvent.ACTION_MOVE:
+                float dx = Math.abs(event.getX() - downX);
+                float dy = Math.abs(event.getY() - downY);
+                if (dx > longPressSlop || dy > longPressSlop) {
+                    cancelLongPress();
+                }
+                break;
+
+            case MotionEvent.ACTION_UP:
+            case MotionEvent.ACTION_CANCEL:
+                cancelLongPress();
+                break;
+        }
         return true;
     }
 
-    @Override
-    public boolean onSingleTapConfirmed(@NonNull MotionEvent e) {
-        ImageView imageView = imageZoomer.getImageView();
-        ImageZoomer.OnViewTapListener tapListener = imageZoomer.getOnViewTapListener();
-        if (tapListener != null) {
-            tapListener.onViewTap(imageView, e.getX(), e.getY());
-            return true;
-        }
-
-        if (imageView instanceof FunctionCallbackView) {
-            FunctionCallbackView functionCallbackView = (FunctionCallbackView) imageView;
-            View.OnClickListener clickListener = functionCallbackView.getOnClickListener();
-            if (clickListener != null && functionCallbackView.isClickable()) {
-                clickListener.onClick(imageView);
-                return true;
-            }
-        }
-
-        return false;
+    private void cancelLongPress() {
+        mainHandler.removeCallbacks(longPressRunnable);
     }
 
-    @Override
-    public void onLongPress(@NonNull MotionEvent e) {
-        super.onLongPress(e);
-
+    private void performLongPress(@NonNull MotionEvent e) {
         ImageView imageView = imageZoomer.getImageView();
         ImageZoomer.OnViewLongPressListener longPressListener = imageZoomer.getOnViewLongPressListener();
         if (longPressListener != null) {
@@ -87,26 +107,5 @@ class TapHelper extends GestureDetector.SimpleOnGestureListener {
                 longClickListener.onLongClick(imageView);
             }
         }
-    }
-
-    @Override
-    public boolean onDoubleTap(@NonNull MotionEvent ev) {
-        try {
-            float currentScaleFormat = SketchUtils.formatFloat(imageZoomer.getZoomScale(), 2);
-            float finalScale = -1;
-            for (float scale : imageZoomer.getZoomScales().getZoomScales()) {
-                if (finalScale == -1) {
-                    finalScale = scale;
-                } else if (currentScaleFormat < SketchUtils.formatFloat(scale, 2)) {
-                    finalScale = scale;
-                    break;
-                }
-            }
-            imageZoomer.zoom(finalScale, true);
-        } catch (ArrayIndexOutOfBoundsException e) {
-            // Can sometimes happen when getX() and getY() is called
-        }
-
-        return true;
     }
 }

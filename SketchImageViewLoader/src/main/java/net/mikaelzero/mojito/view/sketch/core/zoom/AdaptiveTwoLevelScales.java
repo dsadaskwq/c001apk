@@ -71,13 +71,13 @@ public class AdaptiveTwoLevelScales implements ZoomScales {
 
         ImageSizeCalculator sizeCalculator = Sketch.with(context).getConfiguration().getSizeCalculator();
         if (readMode && sizeCalculator.canUseReadModeByHeight(imageWidth, imageHeight)) {
-            // 阅读模式下保证阅读效果最重要
             minZoomScale = fullZoomScale;
             maxZoomScale = Math.max(originZoomScale, fillZoomScale);
+            maxZoomScale = Math.max(maxZoomScale, minZoomScale * 2f);
         } else if (readMode && sizeCalculator.canUseReadModeByWidth(imageWidth, imageHeight)) {
-            // 阅读模式下保证阅读效果最重要
             minZoomScale = fullZoomScale;
             maxZoomScale = Math.max(originZoomScale, fillZoomScale);
+            maxZoomScale = Math.max(maxZoomScale, minZoomScale * 2f);
         } else if (finalScaleType == ScaleType.CENTER) {
             minZoomScale = 1.0f;
             maxZoomScale = Math.max(originZoomScale, fillZoomScale);
