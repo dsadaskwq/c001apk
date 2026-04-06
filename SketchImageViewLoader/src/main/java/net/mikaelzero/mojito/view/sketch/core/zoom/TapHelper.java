@@ -17,82 +17,38 @@
 package net.mikaelzero.mojito.view.sketch.core.zoom;
 
 import android.content.Context;
-import android.os.Handler;
-import android.os.Looper;
+import android.view.GestureDetector;
 import android.view.MotionEvent;
 import android.view.View;
-import android.view.ViewConfiguration;
 import android.widget.ImageView;
 
 import androidx.annotation.NonNull;
 
 import net.mikaelzero.mojito.view.sketch.core.viewfun.FunctionCallbackView;
 
-class TapHelper {
-
-    private static final int LONG_PRESS_TIMEOUT = 400;
+class TapHelper extends GestureDetector.SimpleOnGestureListener {
 
     @NonNull
     private final ImageZoomer imageZoomer;
     @NonNull
-    private final Handler mainHandler;
-    private final float longPressSlop;
-
-    private float downX;
-    private float downY;
-    private boolean isLongPressTriggered = false;
-    private MotionEvent downEvent = null;
-
-    private final Runnable longPressRunnable = new Runnable() {
-        @Override
-        public void run() {
-            if (!isLongPressTriggered && downEvent != null) {
-                isLongPressTriggered = true;
-                performLongPress(downEvent);
-            }
-        }
-    };
+    private final GestureDetector gestureDetector;
 
     TapHelper(@NonNull Context appContext, @NonNull ImageZoomer imageZoomer) {
         this.imageZoomer = imageZoomer;
-        this.mainHandler = new Handler(Looper.getMainLooper());
-        this.longPressSlop = ViewConfiguration.get(appContext).getScaledTouchSlop() * 2f;
+        this.gestureDetector = new GestureDetector(appContext, this);
     }
 
     boolean onTouchEvent(@NonNull MotionEvent event) {
-        switch (event.getAction()) {
-            case MotionEvent.ACTION_DOWN:
-                downX = event.getX();
-                downY = event.getY();
-                isLongPressTriggered = false;
-                if (downEvent != null) {
-                    downEvent.recycle();
-                }
-                downEvent = MotionEvent.obtain(event);
-                mainHandler.postDelayed(longPressRunnable, LONG_PRESS_TIMEOUT);
-                break;
+        return gestureDetector.onTouchEvent(event);
+    }
 
-            case MotionEvent.ACTION_MOVE:
-                float dx = Math.abs(event.getX() - downX);
-                float dy = Math.abs(event.getY() - downY);
-                if (dx > longPressSlop || dy > longPressSlop) {
-                    cancelLongPress();
-                }
-                break;
-
-            case MotionEvent.ACTION_UP:
-            case MotionEvent.ACTION_CANCEL:
-                cancelLongPress();
-                break;
-        }
+    @Override
+    public boolean onDown(@NonNull MotionEvent e) {
         return true;
     }
 
-    private void cancelLongPress() {
-        mainHandler.removeCallbacks(longPressRunnable);
-    }
-
-    private void performLongPress(@NonNull MotionEvent e) {
+    @Override
+    public void onLongPress(@NonNull MotionEvent e) {
         ImageView imageView = imageZoomer.getImageView();
         ImageZoomer.OnViewLongPressListener longPressListener = imageZoomer.getOnViewLongPressListener();
         if (longPressListener != null) {

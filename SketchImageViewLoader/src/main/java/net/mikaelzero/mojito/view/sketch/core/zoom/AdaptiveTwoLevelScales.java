@@ -113,6 +113,9 @@ public class AdaptiveTwoLevelScales implements ZoomScales {
             minZoomScale = minZoomScale - maxZoomScale;
         }
 
+        // 最大缩放倍数限制为 4 倍
+        maxZoomScale = Math.min(maxZoomScale, minZoomScale * 4f);
+
         // 双击缩放比例始终由最小缩放比例和最大缩放比例组成
         doubleClickZoomScales = new float[]{minZoomScale, maxZoomScale};
     }
