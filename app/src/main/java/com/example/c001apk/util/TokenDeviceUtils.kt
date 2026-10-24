@@ -60,7 +60,7 @@ object TokenDeviceUtils {
             )
             val plain = "${Constants.APP_ID}&$segment&${this.getMD5()}&$time&$appCode"
             val password = plain.toByteArray().let { Base64.encodeToString(it, Base64.NO_WRAP) }.getMD5()
-            val source = "${time.toString(16)}/${plain.getMD5()}".toByteArray().getBase64(true).substring(0, 22)
+            val source = "${time.toString(16)}/${plain.getMD5()}".getBase64(true).substring(0, 22)
             val last = alphabet.indexOf(source[21])
             if (last < 0) continue
             val salt = source.substring(0, 21) + alphabet[(last - 5 + 64) % 64]
