@@ -1,7 +1,6 @@
 package com.example.c001apk.util
 
 import com.example.c001apk.constant.Constants.APP_ID
-import com.example.c001apk.constant.Constants.SUPPORTED_CODE
 import com.example.c001apk.constant.Constants.CHANNEL
 import com.example.c001apk.constant.Constants.DARK_MODE
 import com.example.c001apk.constant.Constants.LOCALE
@@ -19,7 +18,7 @@ object AddCookiesInterceptor : Interceptor {
     override fun intercept(chain: Interceptor.Chain): Response {
         val builder: Request.Builder = chain.request().newBuilder()
         val deviceCode = TokenDeviceUtils.getLastingDeviceCode()
-        val token = deviceCode.getTokenV2()
+        val token = deviceCode.getTokenV3()
         builder.apply {
             addHeader("User-Agent", PrefManager.USER_AGENT)
             addHeader("X-Requested-With", REQUEST_WITH)
@@ -34,7 +33,7 @@ object AddCookiesInterceptor : Interceptor {
             addHeader("X-Dark-Mode", DARK_MODE)
             addHeader("X-App-Channel", CHANNEL)
             addHeader("X-App-Mode", MODE)
-            addHeader("X-App-Supported", SUPPORTED_CODE)
+            addHeader("X-App-Supported", PrefManager.VERSION_CODE)
             addHeader("Content-Type", "application/x-www-form-urlencoded")
             addHeader("Accept", "text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,image/apng,*/*;q=0.8,application/signed-exchange;v=b3;q=0.7")
             if (PrefManager.isLogin)

@@ -1,6 +1,7 @@
 package com.example.c001apk.util
 
 import android.content.Context
+import android.util.Base64
 import com.example.c001apk.MyApplication.Companion.context
 import com.example.c001apk.constant.Constants
 import com.example.c001apk.util.Utils.getBase64
@@ -41,6 +42,33 @@ object TokenDeviceUtils {
         val model = PrefManager.MODEL
         val buildNumber = PrefManager.BUILDNUMBER
         return DeviceCode.encode("$szlmId; ; ; $mac; $manuFactor; $brand; $model; $buildNumber; null")
+    }
+
+    // 与 coolapk-desktop 的 auth.rs 同源（TG-Twilight/c001apk 同源实现）：
+    // 密料中按时间与版本号轮换取段，bcrypt 代价为 04，失败时换秒重试最多 16 次
+    fun String.getTokenV3(): String {
+        val appCode = Constants.VERSION_CODE.toInt()
+        val now = System.currentTimeMillis() / 1000
+        val alphabet = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/"
+        val blob = Base64.decode(Constants.TOKEN_V3_DATA, Base64.DEFAULT)
+        for (offset in 0..15) {
+            val time = now + offset
+            val index = ((time + appCode) % 100).toInt() * 4 + 0x80
+            val segment = String(
+                Base64.decode(String(blob, index, 0x80, Charsets.US_ASCII), Base64.DEFAULT),
+                Charsets.UTF_8
+            )
+            val plain = "${Constants.APP_ID}&$segment&${this.getMD5()}&$time&$appCode"
+            val password = plain.toByteArray().let { Base64.encodeToString(it, Base64.NO_WRAP) }.getMD5()
+            val source = "${time.toString(16)}/${plain.getMD5()}".toByteArray().getBase64(true).substring(0, 22)
+            val last = alphabet.indexOf(source[21])
+            if (last < 0) continue
+            val salt = source.substring(0, 21) + alphabet[(last - 5 + 64) % 64]
+            if (!Regex("^[./A-Za-z0-9]{22}$").matches(salt)) continue
+            val hash = BCrypt.hashpw(password, "\$2a\$04\$$salt").replaceRange(0, 3, "\$2y")
+            return "v3" + hash.toByteArray().let { Base64.encodeToString(it, Base64.NO_WRAP) }.replace("=", "")
+        }
+        throw IllegalStateException("无法生成请求签名，请检查系统时间")
     }
 
     fun String.getTokenV2(): String {
