@@ -6,8 +6,10 @@ import com.example.c001apk.ui.captcha.CaptchaActivity
 import okhttp3.Interceptor
 import okhttp3.Request
 import okhttp3.Response
+import java.net.URLEncoder
 import java.util.concurrent.CountDownLatch
 import java.util.concurrent.TimeUnit
+import java.util.concurrent.atomic.AtomicBoolean
 
 /**
  * 服务端对动态详情等接口要求人机验证（err_request_captcha_v2）；
@@ -15,8 +17,7 @@ import java.util.concurrent.TimeUnit
  */
 object CaptchaInterceptor : Interceptor {
 
-    @Volatile
-    private var verifying = false
+    private val verifying = AtomicBoolean(false)
 
     @Volatile
     private var latch: CountDownLatch? = null
@@ -30,14 +31,15 @@ object CaptchaInterceptor : Interceptor {
 
         val deviceCode = TokenDeviceUtils.getLastingDeviceCode()
         val proof = CaptchaStore.current(deviceCode)
-        val signed = if (proof != null) appendValidate(request, proof) else request
+        val signed = if (proof != null) withValidate(request, proof) else request
         val response = chain.proceed(signed)
-        if (verifying) return response
+        if (verifying.get()) return response
 
         val challenge = response.peekBody(16384).string().let { CaptchaChallenge.fromBody(it) }
             ?: return response
 
-        verifying = true
+        // 并发命中挑战时仅首个请求发起验证，其余直接返回原响应
+        if (!verifying.compareAndSet(false, true)) return response
         val waiting = CountDownLatch(1)
         latch = waiting
         try {
@@ -47,16 +49,20 @@ object CaptchaInterceptor : Interceptor {
                     .addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
             )
             waiting.await(2, TimeUnit.MINUTES)
-            val newProof = CaptchaStore.current(deviceCode)
-            if (newProof != null && newProof != proof) {
-                response.close()
-                return chain.proceed(appendValidate(signed, newProof))
-            }
-            return response
+            val newProof = CaptchaStore.takePending() ?: return response
+            response.close()
+            val retryResponse = chain.proceed(withValidate(request, newProof))
+            // 仅当服务端接受重试才落盘凭证；仍被挑战则连同既有凭证一并清除，防止反复验证
+            val stillChallenged = retryResponse.peekBody(16384).string()
+                .let { CaptchaChallenge.fromBody(it) } != null
+            if (stillChallenged) CaptchaStore.reject()
+            else CaptchaStore.confirm(newProof, deviceCode)
+            return retryResponse
         } catch (e: InterruptedException) {
+            CaptchaStore.takePending()
             return response
         } finally {
-            verifying = false
+            verifying.set(false)
             latch = null
         }
     }
@@ -65,11 +71,16 @@ object CaptchaInterceptor : Interceptor {
         latch?.countDown()
     }
 
-    private fun appendValidate(request: Request, proof: String): Request =
-        request.newBuilder()
-            .header(
-                "Cookie",
-                (request.header("Cookie")?.let { "$it; " } ?: "") + "validate=$proof"
-            )
+    // 剥离既有 validate 后重设，避免重放请求出现双份凭证；发送前 URL 编码
+    private fun withValidate(request: Request, proof: String): Request {
+        val cookies = request.header("Cookie")
+            ?.split(";")
+            ?.map { it.trim() }
+            ?.filter { it.isNotEmpty() && !it.startsWith("validate=") }
+            .orEmpty()
+        val encoded = URLEncoder.encode(proof, "UTF-8")
+        return request.newBuilder()
+            .header("Cookie", (cookies + "validate=$encoded").joinToString("; "))
             .build()
+    }
 }

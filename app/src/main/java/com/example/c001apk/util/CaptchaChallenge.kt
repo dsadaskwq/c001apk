@@ -15,28 +15,36 @@ data class CaptchaChallenge(val captchaId: String, val field: String) {
 
     companion object {
         const val DEFAULT_ID = "414e5c9b866a03db03f860a1a9101672"
-        private val ID_PATTERN = Regex("^[a-zA-Z0-9]{16,64}$")
+        val ID_PATTERN = Regex("^[a-zA-Z0-9]{16,64}$")
         private val FIELD_PATTERN = Regex("^_[a-zA-Z0-9_]{1,63}$")
 
         /**
          * 从响应体解析验证码挑战； 仅 err_request_captcha_v2 响应有效。
-         * captchaId 不可信时回落默认值； 空的 captchaField 表示 validate Cookie 协议。
+         * extra 取 messageExtra ?? extra，字符串二次解析失败回落顶层；
+         * captchaId 不可信时回落默认值；键缺失回落表单字段协议，
+         * 显式空串表示 validate Cookie 协议。
          */
         fun fromBody(body: String): CaptchaChallenge? {
             val json = runCatching { JSONObject(body) }.getOrNull() ?: return null
             if (json.optString("messageStatus") != "err_request_captcha_v2") return null
-            val extra: JSONObject = json.optJSONObject("messageExtra")
-                ?: json.optJSONObject("extra")?.let {
-                    if (it.length() > 0) it else null
-                }
-                ?: json.optString("messageExtra").takeIf { it.isNotEmpty() }
-                    ?.let { str -> runCatching { JSONObject(str) }.getOrNull() }
-                ?: json
+            val raw = json.opt("messageExtra") ?: json.opt("extra")
+            val extra = when (raw) {
+                is JSONObject -> raw
+                is String -> runCatching { JSONObject(raw) }.getOrNull() ?: json
+                else -> json
+            }
             val id = extra.optString("captchaId")
-            val field = extra.optString("captchaField", "").trim()
+            val fieldRaw: String? =
+                if (extra.has("captchaField")) extra.optString("captchaField") else null
+            val field = when {
+                fieldRaw == null -> "_v2_post_token"
+                fieldRaw.trim().isEmpty() -> ""
+                FIELD_PATTERN.matches(fieldRaw) -> fieldRaw.trim()
+                else -> "_v2_post_token"
+            }
             return CaptchaChallenge(
                 if (ID_PATTERN.matches(id)) id else DEFAULT_ID,
-                if (field.isEmpty() || FIELD_PATTERN.matches(field)) field else "_v2_post_token"
+                field
             )
         }
     }

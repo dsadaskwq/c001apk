@@ -14,7 +14,7 @@ import com.example.c001apk.util.CaptchaChallenge
 import com.example.c001apk.util.CaptchaInterceptor
 import com.example.c001apk.util.CaptchaStore
 import com.example.c001apk.util.PrefManager
-import com.example.c001apk.util.TokenDeviceUtils
+import android.webkit.WebResourceRequest
 
 /**
  * 内嵌网易易盾组件完成人机验证，回传 validate 后组装凭证交给网络层重放。
@@ -28,7 +28,9 @@ class CaptchaActivity : AppCompatActivity() {
     @SuppressLint("SetJavaScriptEnabled")
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
-        captchaId = intent.getStringExtra(EXTRA_CAPTCHA_ID) ?: CaptchaChallenge.DEFAULT_ID
+        captchaId = intent.getStringExtra(EXTRA_CAPTCHA_ID)
+            ?.takeIf { CaptchaChallenge.ID_PATTERN.matches(it) }
+            ?: CaptchaChallenge.DEFAULT_ID
 
         val title = TextView(this).apply {
             text = "人机验证"
@@ -40,7 +42,13 @@ class CaptchaActivity : AppCompatActivity() {
             settings.javaScriptEnabled = true
             settings.domStorageEnabled = true
             settings.userAgentString = PrefManager.USER_AGENT
-            webViewClient = WebViewClient()
+            webViewClient = object : WebViewClient() {
+                // 主框架导航一律拦截，防止 Bridge 暴露给重定向后的页面
+                override fun shouldOverrideUrlLoading(
+                    view: WebView,
+                    request: WebResourceRequest
+                ): Boolean = request.isForMainFrame
+            }
             addJavascriptInterface(Bridge(), "AndroidBridge")
         }
         reload.setOnClickListener { webView.loadDataWithBaseURL(CAPTCHA_BASE_URL, html(), "text/html", "utf-8", null) }
@@ -109,7 +117,7 @@ class CaptchaActivity : AppCompatActivity() {
                 }
                 return
             }
-            CaptchaStore.save(proof, TokenDeviceUtils.getLastingDeviceCode())
+            CaptchaStore.stage(proof)
             runOnUiThread {
                 Toast.makeText(this@CaptchaActivity, "验证完成", Toast.LENGTH_SHORT).show()
                 finish()

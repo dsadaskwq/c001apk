@@ -3,11 +3,33 @@ package com.example.c001apk.util
 import java.security.MessageDigest
 
 /**
- * 人机验证凭证缓存； 与登录态、设备码绑定，24 小时内随请求以 validate Cookie 发送。
+ * 人机验证凭证管理； 滑块完成后先内存持有，服务端接受重试后才落盘，
+ * 凭证与登录态、设备码绑定，24 小时内随请求以 validate Cookie 发送。
  */
 object CaptchaStore {
 
     private const val MAX_AGE_MS = 24 * 60 * 60 * 1000L
+
+    @Volatile
+    private var pending: String? = null
+
+    fun stage(proof: String) {
+        pending = proof
+    }
+
+    fun takePending(): String? = pending.also { pending = null }
+
+    fun confirm(proof: String, deviceCode: String) {
+        PrefManager.captchaProof = proof
+        PrefManager.captchaProofAt = System.currentTimeMillis()
+        PrefManager.captchaIdentity = identity(deviceCode)
+    }
+
+    // 重试仍被挑战：凭证无效，连同既有落盘凭证一并清除
+    fun reject() {
+        pending = null
+        clear()
+    }
 
     fun current(deviceCode: String): String? {
         val proof = PrefManager.captchaProof
@@ -19,12 +41,6 @@ object CaptchaStore {
             clear(); return null
         }
         return proof
-    }
-
-    fun save(proof: String, deviceCode: String) {
-        PrefManager.captchaProof = proof
-        PrefManager.captchaProofAt = System.currentTimeMillis()
-        PrefManager.captchaIdentity = identity(deviceCode)
     }
 
     fun clear() {
