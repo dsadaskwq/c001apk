@@ -13,6 +13,7 @@ import androidx.appcompat.app.AppCompatActivity
 import com.example.c001apk.util.CaptchaChallenge
 import com.example.c001apk.util.CaptchaInterceptor
 import com.example.c001apk.util.CaptchaStore
+import com.example.c001apk.util.PrefManager
 import com.example.c001apk.util.TokenDeviceUtils
 
 /**
@@ -38,10 +39,11 @@ class CaptchaActivity : AppCompatActivity() {
         webView = WebView(this).apply {
             settings.javaScriptEnabled = true
             settings.domStorageEnabled = true
+            settings.userAgentString = PrefManager.USER_AGENT
             webViewClient = WebViewClient()
             addJavascriptInterface(Bridge(), "AndroidBridge")
         }
-        reload.setOnClickListener { webView.loadDataWithBaseURL(null, html(), "text/html", "utf-8", null) }
+        reload.setOnClickListener { webView.loadDataWithBaseURL(CAPTCHA_BASE_URL, html(), "text/html", "utf-8", null) }
 
         val root = LinearLayout(this).apply {
             orientation = LinearLayout.VERTICAL
@@ -57,7 +59,7 @@ class CaptchaActivity : AppCompatActivity() {
         }
         setContentView(root)
         this.root = root
-        webView.loadDataWithBaseURL(null, html(), "text/html", "utf-8", null)
+        webView.loadDataWithBaseURL(CAPTCHA_BASE_URL, html(), "text/html", "utf-8", null)
     }
 
     override fun onDestroy() {
@@ -118,5 +120,8 @@ class CaptchaActivity : AppCompatActivity() {
 
     companion object {
         const val EXTRA_CAPTCHA_ID = "captchaId"
+
+        // 易盾 SDK 要求页面为 https origin；同源实现使用同一占位域名
+        private const val CAPTCHA_BASE_URL = "https://captcha.c001apk.invalid/"
     }
 }
