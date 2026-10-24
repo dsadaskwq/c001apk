@@ -121,7 +121,6 @@ class MainActivity : BaseActivity<ActivityMainBinding>(), IOnBottomClickContaine
     }
 
     private fun genData() {
-//        viewModel.fetchAppInfo("com.coolapk.market")
         viewModel.getCheckLoginInfo()
     }
 

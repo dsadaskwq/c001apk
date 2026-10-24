@@ -32,7 +32,6 @@ object TokenDeviceUtils {
                 BUILDNUMBER = randHexString(16)
                 SDK_INT = randomSdkInt()
                 ANDROID_VERSION = randomAndroidVersionRelease()
-                updateUserAgent()
             }
         }
         val szlmId = if (PrefManager.SZLMID == "") randHexString(16) else PrefManager.SZLMID

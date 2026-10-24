@@ -23,27 +23,6 @@ class MainViewModel @Inject constructor(
     var isInit: Boolean = true
     val setBadge = MutableLiveData<Event<Boolean>>()
 
-    fun fetchAppInfo(id: String) {
-        viewModelScope.launch(Dispatchers.IO) {
-            networkRepo.getAppInfo(id)
-                .collect { result ->
-                    val appInfo = result.getOrNull()
-                    if (appInfo?.data != null) {
-                        try {
-//                            PrefManager.VERSION_NAME = appInfo.data.apkversionname ?: PrefManager.VERSION_CODE
-//                            PrefManager.API_VERSION = "13"
-//                            PrefManager.VERSION_CODE = appInfo.data.apkversioncode ?: PrefManager.VERSION_CODE
-//                            PrefManager.updateUserAgent()
-                        } catch (e: Exception) {
-                            e.printStackTrace()
-                        }
-                    }
-
-                    getCheckLoginInfo()
-                }
-        }
-    }
-
     fun getCheckLoginInfo() {
         viewModelScope.launch(Dispatchers.IO) {
             networkRepo.checkLoginInfo()

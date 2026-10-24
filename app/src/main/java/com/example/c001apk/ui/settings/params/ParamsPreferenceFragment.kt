@@ -72,7 +72,6 @@ class ParamsPreferenceFragment : PreferenceFragmentCompat(), SharedPreferences.O
                     setPositiveButton(android.R.string.ok) { _, _ ->
                         PrefManager.VERSION_NAME =
                             editText.text.toString().ifEmpty { Constants.VERSION_NAME }
-                        updateUserAgent()
                     }
                 }.create().apply {
                     window?.setSoftInputMode(WindowManager.LayoutParams.SOFT_INPUT_STATE_VISIBLE)
@@ -133,7 +132,6 @@ class ParamsPreferenceFragment : PreferenceFragmentCompat(), SharedPreferences.O
                     setPositiveButton(android.R.string.ok) { _, _ ->
                         PrefManager.VERSION_CODE =
                             editText.text.toString().ifEmpty { Constants.VERSION_CODE }
-                        updateUserAgent()
                     }
                 }.create().apply {
                     window?.setSoftInputMode(WindowManager.LayoutParams.SOFT_INPUT_STATE_VISIBLE)
@@ -201,17 +199,14 @@ class ParamsPreferenceFragment : PreferenceFragmentCompat(), SharedPreferences.O
                     setNeutralButton(R.string.system_info) { _, _ ->
                         PrefManager.BRAND = android.os.Build.BRAND
                         PrefManager.xAppDevice = getDeviceCode(false)
-                        updateUserAgent()
                     }
                     setPositiveButton(android.R.string.ok) { _, _ ->
                         PrefManager.BRAND = editText.text.toString().ifEmpty { randomBrand() }
                         PrefManager.xAppDevice = getDeviceCode(false)
-                        updateUserAgent()
                     }
                     setNegativeButton(R.string.random_value) { _, _ ->
                         PrefManager.BRAND = randomBrand()
                         PrefManager.xAppDevice = getDeviceCode(false)
-                        updateUserAgent()
                     }
                 }.create().apply {
                     window?.setSoftInputMode(WindowManager.LayoutParams.SOFT_INPUT_STATE_VISIBLE)
@@ -241,18 +236,15 @@ class ParamsPreferenceFragment : PreferenceFragmentCompat(), SharedPreferences.O
                     setNeutralButton(R.string.system_info) { _, _ ->
                         PrefManager.MODEL = android.os.Build.MODEL
                         PrefManager.xAppDevice = getDeviceCode(false)
-                        updateUserAgent()
                     }
                     setPositiveButton(android.R.string.ok) { _, _ ->
                         PrefManager.MODEL =
                             editText.text.toString().ifEmpty { randomDeviceModel() }
                         PrefManager.xAppDevice = getDeviceCode(false)
-                        updateUserAgent()
                     }
                     setNegativeButton(R.string.random_value) { _, _ ->
                         PrefManager.MODEL = randomDeviceModel()
                         PrefManager.xAppDevice = getDeviceCode(false)
-                        updateUserAgent()
                     }
                 }.create().apply {
                     window?.setSoftInputMode(WindowManager.LayoutParams.SOFT_INPUT_STATE_VISIBLE)
@@ -282,18 +274,15 @@ class ParamsPreferenceFragment : PreferenceFragmentCompat(), SharedPreferences.O
                     setNeutralButton(R.string.system_info) { _, _ ->
                         PrefManager.BUILDNUMBER = android.os.Build.DISPLAY
                         PrefManager.xAppDevice = getDeviceCode(false)
-                        updateUserAgent()
                     }
                     setPositiveButton(android.R.string.ok) { _, _ ->
                         PrefManager.BUILDNUMBER =
                             editText.text.toString().ifEmpty { randHexString(16) }
                         PrefManager.xAppDevice = getDeviceCode(false)
-                        updateUserAgent()
                     }
                     setNegativeButton(R.string.random_value) { _, _ ->
                         PrefManager.BUILDNUMBER = randHexString(16)
                         PrefManager.xAppDevice = getDeviceCode(false)
-                        updateUserAgent()
                     }
                 }.create().apply {
                     window?.setSoftInputMode(WindowManager.LayoutParams.SOFT_INPUT_STATE_VISIBLE)
@@ -356,16 +345,13 @@ class ParamsPreferenceFragment : PreferenceFragmentCompat(), SharedPreferences.O
                     setTitle("ANDROID_VERSION")
                     setNeutralButton(R.string.system_info) { _, _ ->
                         PrefManager.ANDROID_VERSION = android.os.Build.VERSION.RELEASE
-                        updateUserAgent()
                     }
                     setPositiveButton(android.R.string.ok) { _, _ ->
                         PrefManager.ANDROID_VERSION =
                             editText.text.toString().ifEmpty { randomAndroidVersionRelease() }
-                        updateUserAgent()
                     }
                     setNegativeButton(R.string.random_value) { _, _ ->
                         PrefManager.ANDROID_VERSION = randomAndroidVersionRelease()
-                        updateUserAgent()
                     }
                 }.create().apply {
                     window?.setSoftInputMode(WindowManager.LayoutParams.SOFT_INPUT_STATE_VISIBLE)
@@ -395,7 +381,6 @@ class ParamsPreferenceFragment : PreferenceFragmentCompat(), SharedPreferences.O
                     setNegativeButton(android.R.string.cancel, null)
                     setPositiveButton(android.R.string.ok) { _, _ ->
                         PrefManager.USER_AGENT = editText.text.toString()
-                            .ifEmpty { Constants.USER_AGENT }
                     }
                 }.create().apply {
                     window?.setSoftInputMode(WindowManager.LayoutParams.SOFT_INPUT_STATE_VISIBLE)
@@ -471,10 +456,6 @@ class ParamsPreferenceFragment : PreferenceFragmentCompat(), SharedPreferences.O
 
     }
 
-    private fun updateUserAgent() {
-        PrefManager.updateUserAgent()
-    }
-
     override fun onDestroyView() {
         PrefManager.unregisterOnSharedPreferenceChangeListener(this)
         super.onDestroyView()
@@ -491,7 +472,7 @@ class ParamsPreferenceFragment : PreferenceFragmentCompat(), SharedPreferences.O
             "BUILDNUMBER" -> findPreference<Preference>(key)?.summary = PrefManager.BUILDNUMBER
             "SDK_INT" -> findPreference<Preference>(key)?.summary = PrefManager.SDK_INT
             "ANDROID_VERSION" -> findPreference<Preference>(key)?.summary = PrefManager.ANDROID_VERSION
-            "USER_AGENT" -> findPreference<Preference>(key)?.summary = PrefManager.USER_AGENT
+            "CUSTOM_USER_AGENT" -> findPreference<Preference>("USER_AGENT")?.summary = PrefManager.USER_AGENT
             "xAppDevice" -> findPreference<Preference>(key)?.summary = PrefManager.xAppDevice
         }
     }

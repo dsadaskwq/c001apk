@@ -28,7 +28,7 @@ import com.bumptech.glide.load.resource.bitmap.CenterCrop
 import com.bumptech.glide.load.resource.drawable.DrawableTransitionOptions.withCrossFade
 import com.bumptech.glide.request.transition.Transition
 import com.example.c001apk.R
-import com.example.c001apk.constant.Constants.USER_AGENT
+import com.example.c001apk.util.PrefManager.USER_AGENT
 import com.example.c001apk.util.ClipboardUtil.copyText
 import com.example.c001apk.util.FileUtil.copyFile
 import com.example.c001apk.util.FileUtil.createFileByDeleteOldFile
