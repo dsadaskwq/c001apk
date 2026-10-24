@@ -2,6 +2,7 @@ package com.example.c001apk.logic.network
 
 import com.example.c001apk.BuildConfig
 import com.example.c001apk.util.AddCookiesInterceptor
+import com.example.c001apk.util.CaptchaInterceptor
 import com.example.c001apk.util.LoginCookiesInterceptor
 import okhttp3.OkHttpClient
 import okhttp3.logging.HttpLoggingInterceptor
@@ -28,6 +29,7 @@ object ApiServiceCreator {
                     ServiceType.ACCOUNT_SERVICE -> LoginCookiesInterceptor
                 }
             )
+            .addInterceptor(CaptchaInterceptor)
             .addInterceptor(
                 HttpLoggingInterceptor().setLevel
                     (

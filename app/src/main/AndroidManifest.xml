@@ -383,6 +383,9 @@
             </intent-filter>
         </activity>
         <activity
+            android:name=".ui.captcha.CaptchaActivity"
+            android:exported="false" />
+        <activity
             android:name=".ui.others.BugHandlerActivity"
             android:exported="false" />
         <activity

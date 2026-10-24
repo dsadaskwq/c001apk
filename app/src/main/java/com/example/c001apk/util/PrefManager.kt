@@ -128,6 +128,18 @@ object PrefManager {
             }
         set(value) = pref.edit().putString("CUSTOM_USER_AGENT", value).apply()
 
+    var captchaProof: String
+        get() = pref.getString("captchaProof", "")!!
+        set(value) = pref.edit().putString("captchaProof", value).apply()
+
+    var captchaProofAt: Long
+        get() = pref.getLong("captchaProofAt", 0L)
+        set(value) = pref.edit().putLong("captchaProofAt", value).apply()
+
+    var captchaIdentity: String
+        get() = pref.getString("captchaIdentity", "")!!
+        set(value) = pref.edit().putString("captchaIdentity", value).apply()
+
     var SZLMID: String
         get() = pref.getString("SZLMID", "")!!
         set(value) = pref.edit().putString("SZLMID", value).apply()
