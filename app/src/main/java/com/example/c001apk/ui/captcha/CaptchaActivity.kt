@@ -62,13 +62,22 @@ class CaptchaActivity : AppCompatActivity() {
         val root = LinearLayout(this).apply {
             orientation = LinearLayout.VERTICAL
             addView(title)
-            addView(reload)
+            // WebView 用权重占满标题与按钮之间的剩余空间，保证验证内容完整可见、可滚动
             addView(
                 webView,
                 LinearLayout.LayoutParams(
                     LinearLayout.LayoutParams.MATCH_PARENT,
-                    LinearLayout.LayoutParams.MATCH_PARENT
+                    0,
+                    1f
                 )
+            )
+            // 重新加载按钮放在最下方，避免遮挡向上展开的验证面板
+            addView(
+                reload,
+                LinearLayout.LayoutParams(
+                    LinearLayout.LayoutParams.MATCH_PARENT,
+                    LinearLayout.LayoutParams.WRAP_CONTENT
+                ).apply { setMargins(32, 8, 32, 16) }
             )
         }
         setContentView(root)
@@ -86,8 +95,8 @@ class CaptchaActivity : AppCompatActivity() {
     private fun html(): String = """
         <!doctype html><html lang="zh-CN"><head>
         <meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
-        <style>:root{color-scheme:light dark}body{font:16px sans-serif;margin:24px;color:CanvasText;background:Canvas}#captcha{margin-top:24px}p{line-height:1.6}</style>
-        </head><body><p id="status">正在加载验证组件…</p><div id="captcha"></div>
+        <style>:root{color-scheme:light dark}html,body{margin:0;padding:0}body{font:16px sans-serif;padding:16px 24px 120px;color:CanvasText;background:Canvas;box-sizing:border-box}#wrap{min-height:520px;display:flex;align-items:center;justify-content:center}#captcha{width:100%;max-width:340px}p{line-height:1.6;margin:0 0 8px}</style>
+        </head><body><p id="status">正在加载验证组件…</p><div id="wrap"><div id="captcha"></div></div>
         <script>
         function statusText(text){document.getElementById('status').textContent=text;}
         function startCaptcha(){
