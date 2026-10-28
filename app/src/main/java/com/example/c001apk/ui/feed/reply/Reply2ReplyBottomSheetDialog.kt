@@ -174,6 +174,7 @@ class Reply2ReplyBottomSheetDialog : BottomSheetDialogFragment(), IOnPublishClic
             event.getContentIfNotHandledOrReturnNull()?.let {
                 if (it && ::bottomSheetDialog.isInitialized && bottomSheetDialog.isShowing) {
                     bottomSheetDialog.editText.text = null
+                    bottomSheetDialog.clearImages()
                     bottomSheetDialog.dismiss()
                 }
             }
@@ -291,9 +292,11 @@ class Reply2ReplyBottomSheetDialog : BottomSheetDialogFragment(), IOnPublishClic
         }
     }
 
-    override fun onPublish(message: String, replyAndForward: String) {
+    override fun onPublish(message: String, replyAndForward: String, pic: String) {
         viewModel.replyData["message"] = message
         viewModel.replyData["replyAndForward"] = replyAndForward
+        if (pic.isEmpty()) viewModel.replyData.remove("pic")
+        else viewModel.replyData["pic"] = pic
         viewModel.onPostReply()
     }
 

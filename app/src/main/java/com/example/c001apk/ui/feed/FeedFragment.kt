@@ -241,6 +241,7 @@ class FeedFragment : BaseFragment<FragmentFeedBinding>(), IOnPublishClickListene
             event.getContentIfNotHandledOrReturnNull()?.let {
                 if (it && bottomSheetDialog?.isShowing == true) {
                     bottomSheetDialog?.editText?.text = null
+                    bottomSheetDialog?.clearImages()
                     bottomSheetDialog?.dismiss()
                 }
             }
@@ -705,9 +706,11 @@ class FeedFragment : BaseFragment<FragmentFeedBinding>(), IOnPublishClickListene
 
     }
 
-    override fun onPublish(message: String, replyAndForward: String) {
+    override fun onPublish(message: String, replyAndForward: String, pic: String) {
         viewModel.replyData["message"] = message
         viewModel.replyData["replyAndForward"] = replyAndForward
+        if (pic.isEmpty()) viewModel.replyData.remove("pic")
+        else viewModel.replyData["pic"] = pic
         viewModel.onPostReply()
     }
 

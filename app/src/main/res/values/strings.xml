@@ -125,4 +125,5 @@
     <string name="type_vote">投票</string>
     <string name="check_apps_update">检查应用更新</string>
     <string name="check_user_info">查看用户资料</string>
+    <string name="add_image">添加图片</string>
 </resources>

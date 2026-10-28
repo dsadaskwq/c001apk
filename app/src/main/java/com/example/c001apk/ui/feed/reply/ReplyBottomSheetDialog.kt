@@ -1,6 +1,22 @@
 package com.example.c001apk.ui.feed.reply
 
 import android.content.Context
+import android.content.ContextWrapper
+import android.net.Uri
+import android.widget.Toast
+import androidx.activity.ComponentActivity
+import androidx.activity.result.ActivityResultLauncher
+import androidx.activity.result.contract.ActivityResultContracts
+import androidx.recyclerview.widget.LinearLayoutManager
+import androidx.recyclerview.widget.RecyclerView
+import com.bumptech.glide.Glide
+import com.example.c001apk.util.ImageUploader
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.Job
+import kotlinx.coroutines.SupervisorJob
+import kotlinx.coroutines.cancel
+import kotlinx.coroutines.launch
 import android.os.Bundle
 import android.text.Editable
 import android.text.TextUtils
@@ -49,7 +65,144 @@ class ReplyBottomSheetDialog(mContext: Context, mView: View) : BottomSheetDialog
     private var replyAndForward = "0"
     var editText: ExtendEditText = view.findViewById(R.id.editText)
 
+    // ---- 图片 ----
+    private val maxImages = 9
+    private val images = ArrayList<Uri>()
+    private var imageAdapter: ImageAdapter? = null
+    private var imageListView: RecyclerView? = null
+    private var uploadJob: Job? = null
+    private var uploadScope: CoroutineScope? = null
+    private var isUploading = false
+    private var lastKey: String? = null
+    private var refreshPublish: (() -> Unit)? = null
+
+    private inner class ImageAdapter : RecyclerView.Adapter<ImageAdapter.VH>() {
+        inner class VH(v: View) : RecyclerView.ViewHolder(v) {
+            val thumb: ImageView = v.findViewById(R.id.thumb)
+            val remove: ImageView = v.findViewById(R.id.remove)
+        }
+
+        override fun onCreateViewHolder(parent: android.view.ViewGroup, viewType: Int) =
+            VH(
+                android.view.LayoutInflater.from(parent.context)
+                    .inflate(R.layout.item_reply_image, parent, false)
+            )
+
+        override fun getItemCount() = images.size
+
+        override fun onBindViewHolder(holder: VH, position: Int) {
+            Glide.with(holder.thumb).load(images[position]).centerCrop().into(holder.thumb)
+            holder.remove.setOnClickListener {
+                if (isUploading) return@setOnClickListener
+                val pos = holder.bindingAdapterPosition
+                if (pos != RecyclerView.NO_POSITION && pos in images.indices) {
+                    images.removeAt(pos)
+                    notifyItemRemoved(pos)
+                    syncImageList()
+                }
+            }
+        }
+    }
+
+    private fun syncImageList() {
+        imageListView?.isVisible = images.isNotEmpty()
+        refreshPublish?.invoke()
+    }
+
+    /** 发布成功后由宿主调用 */
+    fun clearImages() {
+        images.clear()
+        imageAdapter?.notifyDataSetChanged()
+        syncImageList()
+    }
+
+    private fun findActivity(c: Context): ComponentActivity? {
+        var x: Context? = c
+        while (x is ContextWrapper) {
+            if (x is ComponentActivity) return x
+            x = x.baseContext
+        }
+        return null
+    }
+
+    private fun pickImages() {
+        if (isUploading) return
+        val left = maxImages - images.size
+        if (left <= 0) {
+            Toast.makeText(context, "最多添加 $maxImages 张图片", Toast.LENGTH_SHORT).show()
+            return
+        }
+        val activity = findActivity(context) ?: return
+        val ref = arrayOfNulls<ActivityResultLauncher<String>>(1)
+        ref[0] = activity.activityResultRegistry.register(
+            "reply_pick_${System.nanoTime()}",
+            ActivityResultContracts.GetMultipleContents()
+        ) { uris ->
+            ref[0]?.unregister()
+            if (uris.isNotEmpty()) {
+                val add = uris.filter { it !in images }.take(left)
+                val start = images.size
+                images.addAll(add)
+                imageAdapter?.notifyItemRangeInserted(start, add.size)
+                if (uris.size > left)
+                    Toast.makeText(context, "最多添加 $maxImages 张图片", Toast.LENGTH_SHORT).show()
+                syncImageList()
+            }
+        }
+        ref[0]?.launch("image/*")
+    }
+
+    private fun startPublish(publishView: TextView) {
+        if (isUploading) return
+        var message = editText.text.toString()
+        if (message.replace("\n", "").isEmpty() && images.isNotEmpty()) message = "[图片]"
+        val forward = replyAndForward
+        if (images.isEmpty()) {
+            iOnPublishClickListener?.onPublish(message, forward, "")
+            return
+        }
+        isUploading = true
+        refreshPublish?.invoke()
+        uploadScope?.cancel()
+        val scope = CoroutineScope(SupervisorJob() + Dispatchers.Main).also { uploadScope = it }
+        uploadJob = scope.launch {
+            try {
+                val names = ImageUploader.upload(
+                    context,
+                    images.toList(),
+                    if (type == "reply") "comment" else "feed"
+                ) { done: Int, total: Int ->
+                    scope.launch { publishView.text = "上传中 $done/$total" }
+                }
+                isUploading = false
+                publishView.text = context.getString(R.string.publish)
+                refreshPublish?.invoke()
+                iOnPublishClickListener?.onPublish(message, forward, names.joinToString(","))
+            } catch (e: kotlinx.coroutines.CancellationException) {
+                throw e
+            } catch (e: Exception) {
+                isUploading = false
+                publishView.text = context.getString(R.string.publish)
+                refreshPublish?.invoke()
+                Toast.makeText(context, e.message ?: "图片上传失败", Toast.LENGTH_LONG).show()
+            }
+        }
+    }
+
+    override fun onStop() {
+        super.onStop()
+        // 面板关闭时中止未完成的上传
+        uploadScope?.cancel()
+        if (isUploading) {
+            isUploading = false
+            refreshPublish?.invoke()
+        }
+    }
+
     fun setData() {
+        val key = "$type|$rid|$ruid"
+        if (lastKey != null && lastKey != key) clearImages()
+        lastKey = key
         editText.hint = "回复: $uname"
         if (replyTextMap[rid + ruid].isNullOrEmpty())
             editText.text = null
@@ -93,25 +246,28 @@ class ReplyBottomSheetDialog(mContext: Context, mView: View) : BottomSheetDialog
         emojiPanel.adapter = scrollAdapter
         indicator.setViewPager(emojiPanel)
 
-        fun checkAndPublish() {
-            if (editText.text.toString().replace("\n", "").isEmpty()) {
-                publish.isClickable = false
-                publish.setTextColor(context.getColor(android.R.color.darker_gray))
-            } else {
-                publish.isClickable = true
-                publish.setTextColor(
-                    MaterialColors.getColor(
-                        context,
-                        com.google.android.material.R.attr.colorPrimary,
-                        0
-                    )
-                )
-                publish.setOnClickListener {
-                    iOnPublishClickListener?.onPublish(editText.text.toString(), replyAndForward)
-                }
-            }
+        imageListView = view.findViewById<RecyclerView>(R.id.imageList).apply {
+            layoutManager = LinearLayoutManager(context, LinearLayoutManager.HORIZONTAL, false)
+            imageAdapter = ImageAdapter().also { adapter = it }
+            isVisible = images.isNotEmpty()
         }
+        view.findViewById<ImageView>(R.id.imageBtn).setOnClickListener { pickImages() }
 
+        fun checkAndPublish() {
+            val hasContent =
+                editText.text.toString().replace("\n", "").isNotEmpty() || images.isNotEmpty()
+            val enabled = hasContent && !isUploading
+            publish.isClickable = enabled
+            publish.setTextColor(
+                if (enabled) MaterialColors.getColor(
+                    context,
+                    com.google.android.material.R.attr.colorPrimary,
+                    0
+                ) else context.getColor(android.R.color.darker_gray)
+            )
+        }
+        refreshPublish = ::checkAndPublish
+        publish.setOnClickListener { startPublish(publish) }
 
         checkAndPublish()
         editText.isFocusable = true

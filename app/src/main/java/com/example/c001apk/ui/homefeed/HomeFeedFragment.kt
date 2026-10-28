@@ -170,6 +170,7 @@ class HomeFeedFragment : BaseAppFragment<HomeFeedViewModel>(), IOnTabClickListen
             event?.getContentIfNotHandledOrReturnNull()?.let {
                 if (it && ::bottomSheetDialog.isInitialized && bottomSheetDialog.isShowing) {
                     bottomSheetDialog.editText.text = null
+                    bottomSheetDialog.clearImages()
                     bottomSheetDialog.dismiss()
                 }
             }
@@ -314,12 +315,12 @@ class HomeFeedFragment : BaseAppFragment<HomeFeedViewModel>(), IOnTabClickListen
         }
     }
 
-    override fun onPublish(message: String, replyAndForward: String) {
+    override fun onPublish(message: String, replyAndForward: String, pic: String) {
         viewModel.createFeedData = HashMap()
         viewModel.createFeedData["id"] = ""
         viewModel.createFeedData["message"] = message
         viewModel.createFeedData["type"] = "feed"
-        viewModel.createFeedData["pic"] = ""
+        viewModel.createFeedData["pic"] = pic
         viewModel.createFeedData["status"] = "-1"
         viewModel.onPostCreateFeed()
     }

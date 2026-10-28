@@ -214,6 +214,12 @@ interface ApiService {
         @Query("uid") uid: String
     ): Call<LikeReplyResponse>
 
+    @POST("/v6/upload/ossUploadPrepare")
+    @FormUrlEncoded
+    fun postOssUploadPrepare(
+        @FieldMap data: HashMap<String, String?>
+    ): Call<ResponseBody>
+
     @POST("/v6/feed/createFeed")
     @FormUrlEncoded
     fun postCreateFeed(

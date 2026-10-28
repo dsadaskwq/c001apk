@@ -136,6 +136,9 @@ object Network {
     suspend fun postFollowUnFollow(url: String, uid: String) =
         apiService.postFollowUnFollow(url, uid).await()
 
+    suspend fun postOssUploadPrepare(data: HashMap<String, String?>) =
+        apiService.postOssUploadPrepare(data).await()
+
     suspend fun postCreateFeed(data: HashMap<String, String?>) =
         apiService.postCreateFeed(data).await()
 
