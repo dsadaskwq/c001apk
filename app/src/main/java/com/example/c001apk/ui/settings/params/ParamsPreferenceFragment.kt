@@ -17,6 +17,7 @@ import com.example.c001apk.constant.Constants
 import com.example.c001apk.util.PrefManager
 import com.example.c001apk.util.TokenDeviceUtils.getDeviceCode
 import com.example.c001apk.util.TokenDeviceUtils.randHexString
+import com.example.c001apk.util.TokenDeviceUtils.useSystemDeviceInfo
 import com.example.c001apk.util.Utils.randomAndroidVersionRelease
 import com.example.c001apk.util.Utils.randomBrand
 import com.example.c001apk.util.Utils.randomDeviceModel
@@ -448,12 +449,31 @@ class ParamsPreferenceFragment : PreferenceFragmentCompat(), SharedPreferences.O
             }
         }
 
+        findPreference<Preference>("defaultDevice")?.setOnPreferenceClickListener {
+            useSystemDeviceInfo()
+            refreshDeviceSummaries()
+            Snackbar.make(requireView(), "已使用当前设备信息", Snackbar.LENGTH_SHORT).show()
+            true
+        }
+
         findPreference<Preference>("regenerate")?.setOnPreferenceClickListener {
             PrefManager.xAppDevice = getDeviceCode(true)
+            refreshDeviceSummaries()
             Snackbar.make(requireView(), "已重新生成", Snackbar.LENGTH_SHORT).show()
             true
         }
 
+    }
+
+    private fun refreshDeviceSummaries() {
+        findPreference<Preference>("MANUFACTURER")?.summary = PrefManager.MANUFACTURER
+        findPreference<Preference>("BRAND")?.summary = PrefManager.BRAND
+        findPreference<Preference>("MODEL")?.summary = PrefManager.MODEL
+        findPreference<Preference>("BUILDNUMBER")?.summary = PrefManager.BUILDNUMBER
+        findPreference<Preference>("SDK_INT")?.summary = PrefManager.SDK_INT
+        findPreference<Preference>("ANDROID_VERSION")?.summary = PrefManager.ANDROID_VERSION
+        findPreference<Preference>("USER_AGENT")?.summary = PrefManager.USER_AGENT
+        findPreference<Preference>("xAppDevice")?.summary = PrefManager.xAppDevice
     }
 
     override fun onDestroyView() {
