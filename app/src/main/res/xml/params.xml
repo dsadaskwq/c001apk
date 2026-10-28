@@ -40,6 +40,10 @@
         android:key="xAppToken"
         android:title="@string/xAppToken" />
     <Preference
+        android:key="defaultDevice"
+        android:summary="@string/default_device_summary"
+        android:title="@string/default_device" />
+    <Preference
         android:key="regenerate"
         android:title="@string/regenerate" />
 
