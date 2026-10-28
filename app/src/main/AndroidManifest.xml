@@ -387,6 +387,10 @@
             android:configChanges="orientation|screenSize|keyboardHidden"
             android:exported="false" />
         <activity
+            android:name=".ui.login.SmsVerifyActivity"
+            android:configChanges="orientation|screenSize|keyboardHidden"
+            android:exported="false" />
+        <activity
             android:name=".ui.others.BugHandlerActivity"
             android:exported="false" />
         <activity

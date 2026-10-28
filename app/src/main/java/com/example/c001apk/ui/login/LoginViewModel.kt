@@ -16,6 +16,8 @@ import com.google.gson.Gson
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
+import org.json.JSONArray
+import org.json.JSONObject
 import org.jsoup.Jsoup
 import javax.inject.Inject
 
@@ -43,6 +45,10 @@ class LoginViewModel @Inject constructor(
     val showCaptcha = MutableLiveData<Event<Bitmap>>()
     val getCaptcha = MutableLiveData<Event<String>>()
     val afterLogin = MutableLiveData<Event<Boolean>>()
+    val smsVerify = MutableLiveData<Event<SmsChallenge>>()
+
+    /** 陌生设备登录需要短信验证：url 为官方 validateLogin 页面，cookies 为需带入页面的会话 cookie */
+    data class SmsChallenge(val url: String, val hint: String?, val cookies: List<String>)
 
     fun onPreGetLoginParam() {
         viewModelScope.launch(Dispatchers.IO) {
@@ -117,12 +123,29 @@ class LoginViewModel @Inject constructor(
             networkRepo.tryLogin(loginData)
                 .collect { result ->
                     val response = result.getOrNull()
-                    response?.body()?.let {
-                        val login: LoginResponse = Gson().fromJson(
-                            response.body()?.string(),
-                            LoginResponse::class.java
+                    val raw = response?.body()?.string()
+                    if (response == null || raw.isNullOrEmpty()) {
+                        toastText.postValue(
+                            Event(result.exceptionOrNull()?.message ?: "登录请求失败，请重试")
                         )
-                        if (login.status == 1) {
+                        return@collect
+                    }
+                    parseSmsChallenge(raw, response.headers().values("Set-Cookie"))?.let {
+                        smsVerify.postValue(Event(it))
+                        return@collect
+                    }
+                    val login: LoginResponse? = try {
+                        Gson().fromJson(raw, LoginResponse::class.java)
+                    } catch (e: Exception) {
+                        e.printStackTrace()
+                        null
+                    }
+                    if (login == null) {
+                        toastText.postValue(Event("登录响应解析失败，请重试"))
+                        return@collect
+                    }
+                    if (login.status == 1) {
+                        try {
                             val headers = response.headers()
                             val cookies = headers.values("Set-Cookie")
                             val uid =
@@ -145,16 +168,85 @@ class LoginViewModel @Inject constructor(
                             PrefManager.username = name
                             PrefManager.token = token
                             this@LoginViewModel.uid = uid
-                            onGetProfile()
-                        } else {
-                            login.message?.let {
-                                getCaptcha.postValue(Event(it))
-                            }
+                        } catch (e: Exception) {
+                            e.printStackTrace()
+                            toastText.postValue(Event("无法获取登录凭证"))
+                            return@collect
+                        }
+                        onGetProfile()
+                    } else if (login.messageStatus?.startsWith("err_request_captcha") == true
+                        && login.message.isNullOrEmpty()
+                    ) {
+                        // 人机验证被取消或超时：拦截器已原样返回挑战响应
+                        toastText.postValue(Event("需要完成人机验证后才能登录，请重试"))
+                    } else {
+                        login.message?.let {
+                            getCaptcha.postValue(Event(it))
                         }
                     }
                 }
         }
     }
+
+    /** 短信验证页登录成功后，由 WebView 里读到的 cookie 完成登录 */
+    fun onSmsLoginSuccess(uid: String, name: String, token: String) {
+        PrefManager.isLogin = true
+        PrefManager.uid = uid
+        PrefManager.username = name
+        PrefManager.token = token
+        this.uid = uid
+        onGetProfile()
+    }
+
+    private fun parseSmsChallenge(raw: String, setCookies: List<String>): SmsChallenge? {
+        val json = runCatching { JSONObject(raw) }.getOrNull() ?: return null
+        // 登录成功响应不会带验证页地址
+        if (json.optInt("status") == 1 && json.has("uid")) return null
+        val target = findValidateUrl(json) ?: return null
+        // 登录阶段的会话 cookie（SESSID）+ 本次响应新下发的 cookie（后者覆盖同名项）
+        val merged = LinkedHashMap<String, String>()
+        (listOf(CookieUtil.SESSID, "forward=https://www.coolapk.com") +
+            setCookies.map { it.substringBefore(";") })
+            .map { it.trim() }
+            .filter { it.contains("=") && !it.startsWith("=") }
+            .forEach { merged[it.substringBefore("=")] = it }
+        val cookies = merged.values.toList()
+        return SmsChallenge(
+            target,
+            findString(json, "otherMessage") ?: json.optString("message").ifEmpty { null },
+            cookies
+        )
+    }
+
+    private fun findValidateUrl(node: Any?, depth: Int = 0): String? {
+        if (depth > 4) return null
+        when (node) {
+            is JSONObject -> {
+                for (k in node.keys()) {
+                    val v = node.opt(k)
+                    if (v is String) {
+                        if (v.contains("validateLogin")) return absolute(v)
+                        if ((k == "key" || k == "validateKey" || k == "loginKey") && v.length > 16)
+                            return "https://account.coolapk.com/auth/validateLogin?key=$v"
+                    }
+                }
+                for (k in node.keys()) findValidateUrl(node.opt(k), depth + 1)?.let { return it }
+            }
+            is JSONArray -> for (i in 0 until node.length())
+                findValidateUrl(node.opt(i), depth + 1)?.let { return it }
+        }
+        return null
+    }
+
+    private fun absolute(v: String): String = when {
+        v.startsWith("http") -> v
+        v.startsWith("//") -> "https:$v"
+        v.startsWith("/") -> "https://account.coolapk.com$v"
+        else -> "https://account.coolapk.com/auth/$v"
+    }
+
+    private fun findString(node: JSONObject, key: String): String? =
+        if (node.has(key)) node.optString(key).ifEmpty { null } else null
 
     private fun onGetProfile() {
         viewModelScope.launch(Dispatchers.IO) {

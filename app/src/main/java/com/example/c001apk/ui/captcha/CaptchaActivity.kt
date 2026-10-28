@@ -22,6 +22,7 @@ import android.webkit.WebResourceRequest
 class CaptchaActivity : AppCompatActivity() {
 
     private lateinit var captchaId: String
+    private lateinit var baseUrl: String
     private lateinit var webView: WebView
     private lateinit var root: LinearLayout
 
@@ -31,6 +32,11 @@ class CaptchaActivity : AppCompatActivity() {
         captchaId = intent.getStringExtra(EXTRA_CAPTCHA_ID)
             ?.takeIf { CaptchaChallenge.ID_PATTERN.matches(it) }
             ?: CaptchaChallenge.DEFAULT_ID
+
+        // 登录的验证 ID 在易盾后台绑定了站点域名，需以账号站点作为页面来源；仅放行 coolapk.com 的 https 地址
+        baseUrl = intent.getStringExtra(EXTRA_BASE_URL)
+            ?.takeIf { Regex("^https://([a-z0-9-]+\\.)*coolapk\\.com/.*$").matches(it) }
+            ?: CAPTCHA_BASE_URL
 
         val title = TextView(this).apply {
             text = "人机验证"
@@ -51,7 +57,7 @@ class CaptchaActivity : AppCompatActivity() {
             }
             addJavascriptInterface(Bridge(), "AndroidBridge")
         }
-        reload.setOnClickListener { webView.loadDataWithBaseURL(CAPTCHA_BASE_URL, html(), "text/html", "utf-8", null) }
+        reload.setOnClickListener { webView.loadDataWithBaseURL(baseUrl, html(), "text/html", "utf-8", null) }
 
         val root = LinearLayout(this).apply {
             orientation = LinearLayout.VERTICAL
@@ -67,7 +73,7 @@ class CaptchaActivity : AppCompatActivity() {
         }
         setContentView(root)
         this.root = root
-        webView.loadDataWithBaseURL(CAPTCHA_BASE_URL, html(), "text/html", "utf-8", null)
+        webView.loadDataWithBaseURL(baseUrl, html(), "text/html", "utf-8", null)
     }
 
     override fun onDestroy() {
@@ -98,7 +104,7 @@ class CaptchaActivity : AppCompatActivity() {
                 else{statusText('验证未通过，请按提示重试');}
               }
             },function(){clearTimeout(timeout);statusText('请按下方提示完成人机验证');},
-              function(){clearTimeout(timeout);statusText('无法初始化验证，请检查网络后重新加载');});
+              function(err){clearTimeout(timeout);statusText('无法初始化验证（id='+'$captchaId'.substring(0,8)+'，'+(err&&(err.message||err.code)||JSON.stringify(err)||'未知错误')+'），请检查网络后重新加载');});
             } catch(e){clearTimeout(timeout);statusText('验证组件初始化失败，请重新加载');}
           };
           document.head.appendChild(script);
@@ -128,6 +134,7 @@ class CaptchaActivity : AppCompatActivity() {
 
     companion object {
         const val EXTRA_CAPTCHA_ID = "captchaId"
+        const val EXTRA_BASE_URL = "baseUrl"
 
         // 易盾 SDK 要求页面为 https origin；同源实现使用同一占位域名
         private const val CAPTCHA_BASE_URL = "https://captcha.c001apk.invalid/"

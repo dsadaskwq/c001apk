@@ -24,9 +24,19 @@ data class CaptchaChallenge(val captchaId: String, val field: String) {
          * captchaId 不可信时回落默认值；键缺失回落表单字段协议，
          * 显式空串表示 validate Cookie 协议。
          */
-        fun fromBody(body: String): CaptchaChallenge? {
+        fun fromBody(body: String, lenient: Boolean = false): CaptchaChallenge? {
             val json = runCatching { JSONObject(body) }.getOrNull() ?: return null
-            if (json.optString("messageStatus") != "err_request_captcha_v2") return null
+            if (json.optString("messageStatus") != "err_request_captcha_v2") {
+                // 登录接口的挑战不一定带 err_request_captcha_v2：按提示文案或 err_request_captcha* 识别，
+                // captchaId 在整个 JSON（含字符串形式的嵌套）里查找，缺失回落默认值
+                if (!lenient) return null
+                val status = json.optString("messageStatus")
+                val message = json.optString("message")
+                if (!status.startsWith("err_request_captcha") && !message.contains("人机验证"))
+                    return null
+                val id = findString(json, "captchaId").orEmpty()
+                return CaptchaChallenge(if (ID_PATTERN.matches(id)) id else DEFAULT_ID, "")
+            }
             val raw = json.opt("messageExtra") ?: json.opt("extra")
             val extra = when (raw) {
                 is JSONObject -> raw
@@ -46,6 +56,21 @@ data class CaptchaChallenge(val captchaId: String, val field: String) {
                 if (ID_PATTERN.matches(id)) id else DEFAULT_ID,
                 field
             )
+        }
+
+        private fun findString(node: Any?, key: String, depth: Int = 0): String? {
+            if (depth > 4) return null
+            when (node) {
+                is JSONObject -> {
+                    if (node.has(key)) return node.optString(key)
+                    for (k in node.keys()) findString(node.opt(k), key, depth + 1)?.let { return it }
+                }
+                is org.json.JSONArray -> for (i in 0 until node.length())
+                    findString(node.opt(i), key, depth + 1)?.let { return it }
+                is String -> if (node.trimStart().startsWith("{"))
+                    return findString(runCatching { JSONObject(node) }.getOrNull(), key, depth + 1)
+            }
+            return null
         }
     }
 }

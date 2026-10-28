@@ -18,13 +18,17 @@ class TopicActivity : BaseViewActivity<TopicViewModel>() {
             defaultViewModelCreationExtras.withCreationCallback<TopicViewModel.Factory> { factory ->
                 factory.create(
                     URLDecoder.decode(intent.getStringExtra("url").orEmpty(), "UTF-8"),
-                    intent.getStringExtra("title").orEmpty(),
+                    decodeSafely(intent.getStringExtra("title").orEmpty()),
                     intent.getStringExtra("id").orEmpty(),
                     intent.getStringExtra("type").orEmpty(),
                 )
             }
         }
     )
+
+    // 话题名可能以 %E8%8D%A3... 的编码形式传入，标题需解码后显示
+    private fun decodeSafely(s: String): String =
+        try { android.net.Uri.decode(s) } catch (e: Exception) { s }
 
     @SuppressLint("CommitTransaction")
     override fun beginTransaction() {

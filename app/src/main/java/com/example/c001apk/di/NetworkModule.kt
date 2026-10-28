@@ -152,6 +152,7 @@ object NetworkModule {
     fun provideAccountServiceOkHttpClient(): OkHttpClient {
         return OkHttpClient.Builder()
             .addInterceptor(LoginCookiesInterceptor)
+            .addInterceptor(CaptchaInterceptor)
             .addInterceptor(
                 HttpLoggingInterceptor().setLevel(
                     if (BuildConfig.DEBUG) HttpLoggingInterceptor.Level.BODY

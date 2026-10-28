@@ -1,6 +1,9 @@
 package com.example.c001apk.ui.login
 
+import android.app.Activity
+import android.content.Intent
 import android.os.Bundle
+import androidx.activity.result.contract.ActivityResultContracts
 import android.text.InputFilter
 import android.text.InputFilter.LengthFilter
 import android.text.InputType
@@ -27,6 +30,20 @@ class LoginActivity : BaseActivity<ActivityLoginBinding>() {
 
     private val viewModel by viewModels<LoginViewModel>()
     private var isLoginPass = true
+
+    private val smsLauncher =
+        registerForActivityResult(ActivityResultContracts.StartActivityForResult()) { r ->
+            val d = r.data
+            if (r.resultCode == Activity.RESULT_OK && d != null) {
+                viewModel.onSmsLoginSuccess(
+                    d.getStringExtra(SmsVerifyActivity.RESULT_UID).orEmpty(),
+                    d.getStringExtra(SmsVerifyActivity.RESULT_NAME).orEmpty(),
+                    d.getStringExtra(SmsVerifyActivity.RESULT_TOKEN).orEmpty()
+                )
+            } else {
+                Toast.makeText(this, "已取消短信验证", Toast.LENGTH_SHORT).show()
+            }
+        }
 
     private val filter =
         InputFilter { source: CharSequence, _: Int, _: Int, _: Spanned?, _: Int, _: Int ->
@@ -105,6 +122,15 @@ class LoginActivity : BaseActivity<ActivityLoginBinding>() {
 
         }
 
+        // 长按“登录”复制最近的人机验证诊断信息，便于反馈
+        binding.login.setOnLongClickListener {
+            val log = com.example.c001apk.util.CaptchaInterceptor.lastAccountLog
+                .ifEmpty { "暂无记录，请先点击登录一次再长按" }
+            com.example.c001apk.util.ClipboardUtil.copyText(this, log, showToast = false)
+            Toast.makeText(this, "已复制诊断信息（${log.length} 字）", Toast.LENGTH_SHORT).show()
+            true
+        }
+
         binding.captchaImg.setOnClickListener {
             getCaptcha()
         }
@@ -128,6 +154,18 @@ class LoginActivity : BaseActivity<ActivityLoginBinding>() {
                             viewModel.onGetCaptcha()
                     }
                 }
+            }
+        }
+
+        viewModel.smsVerify.observe(this) { event ->
+            event.getContentIfNotHandledOrReturnNull()?.let { c ->
+                Toast.makeText(this, c.hint ?: "请输入短信验证码", Toast.LENGTH_SHORT).show()
+                smsLauncher.launch(
+                    Intent(this, SmsVerifyActivity::class.java)
+                        .putExtra(SmsVerifyActivity.EXTRA_URL, c.url)
+                        .putExtra(SmsVerifyActivity.EXTRA_HINT, c.hint)
+                        .putStringArrayListExtra(SmsVerifyActivity.EXTRA_COOKIES, ArrayList(c.cookies))
+                )
             }
         }
 

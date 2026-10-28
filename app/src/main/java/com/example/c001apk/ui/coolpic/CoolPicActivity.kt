@@ -10,7 +10,11 @@ import dagger.hilt.android.AndroidEntryPoint
 @AndroidEntryPoint
 class CoolPicActivity : BaseActivity<BaseFragmentContainerBinding>() {
 
-    private val title by lazy { intent.getStringExtra("title").orEmpty() }
+    private val title by lazy {
+        intent.getStringExtra("title").orEmpty().let {
+            try { android.net.Uri.decode(it) } catch (e: Exception) { it }
+        }
+    }
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)

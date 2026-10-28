@@ -6,7 +6,7 @@ data class UserProfileResponse(
     val status: Int?,
     val error: Int?,
     val message: String?,
-    val messageStatus: Int?,
+    val messageStatus: String?,
     val data: Data?
 ) {
     data class Data(
