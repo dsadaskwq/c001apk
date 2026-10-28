@@ -98,6 +98,8 @@
     <string name="font_scale">字体调节</string>
     <string name="show_icon_mini_card">头条显示广场</string>
     <string name="open_link_outside">使用外部浏览器打开链接</string>
+    <string name="default_device">默认设备信息</string>
+    <string name="default_device_summary">点击使用当前设备信息（真实设备）</string>
     <string name="regenerate">重新生成随机设备信息</string>
     <string name="my_freq">我的常去</string>
     <string name="subscribe">关注</string>

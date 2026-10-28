@@ -2,6 +2,7 @@ package com.example.c001apk.util
 
 import android.content.Context.MODE_PRIVATE
 import android.content.SharedPreferences
+import android.os.Build
 import androidx.appcompat.app.AppCompatDelegate
 import com.example.c001apk.MyApplication.Companion.context
 import com.example.c001apk.constant.Constants
@@ -96,27 +97,27 @@ object PrefManager {
         set(value) = pref.edit().putString("VERSION_CODE", value).apply()
 
     var MANUFACTURER: String
-        get() = pref.getString("MANUFACTURER", "")!!
+        get() = pref.getString("MANUFACTURER", Build.MANUFACTURER)!!
         set(value) = pref.edit().putString("MANUFACTURER", value).apply()
 
     var BRAND: String
-        get() = pref.getString("BRAND", "")!!
+        get() = pref.getString("BRAND", Build.BRAND)!!
         set(value) = pref.edit().putString("BRAND", value).apply()
 
     var MODEL: String
-        get() = pref.getString("MODEL", "")!!
+        get() = pref.getString("MODEL", Build.MODEL)!!
         set(value) = pref.edit().putString("MODEL", value).apply()
 
     var BUILDNUMBER: String
-        get() = pref.getString("BUILDNUMBER", "")!!
+        get() = pref.getString("BUILDNUMBER", Build.DISPLAY)!!
         set(value) = pref.edit().putString("BUILDNUMBER", value).apply()
 
     var SDK_INT: String
-        get() = pref.getString("SDK_INT", Constants.SDK_VERSION_CODE)!!
+        get() = pref.getString("SDK_INT", Build.VERSION.SDK_INT.toString())!!
         set(value) = pref.edit().putString("SDK_INT", value).apply()
 
     var ANDROID_VERSION: String
-        get() = pref.getString("ANDROID_VERSION", "")!!
+        get() = pref.getString("ANDROID_VERSION", Build.VERSION.RELEASE)!!
         set(value) = pref.edit().putString("ANDROID_VERSION", value).apply()
 
     var USER_AGENT: String

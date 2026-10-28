@@ -1,6 +1,7 @@
 package com.example.c001apk.util
 
 import android.content.Context
+import android.os.Build
 import android.util.Base64
 import com.example.c001apk.MyApplication.Companion.context
 import com.example.c001apk.constant.Constants
@@ -22,6 +23,21 @@ object TokenDeviceUtils {
         return (0 until n).joinToString("") {
             Random().nextInt(256).toString(16)
         }.uppercase()
+    }
+
+    /**
+     * 使用当前真实设备的信息（默认设备信息），并据此重新生成 X-App-Device
+     */
+    fun useSystemDeviceInfo() {
+        PrefManager.apply {
+            MANUFACTURER = Build.MANUFACTURER
+            BRAND = Build.BRAND
+            MODEL = Build.MODEL
+            BUILDNUMBER = Build.DISPLAY
+            SDK_INT = Build.VERSION.SDK_INT.toString()
+            ANDROID_VERSION = Build.VERSION.RELEASE
+        }
+        PrefManager.xAppDevice = getDeviceCode(false)
     }
 
     fun getDeviceCode(regenerate: Boolean): String {
@@ -90,8 +106,9 @@ object TokenDeviceUtils {
     }
 
     fun getLastingDeviceCode(): String {
+        // 首次使用默认采用当前真实设备信息，而不是随机设备信息
         if (PrefManager.xAppDevice == "")
-            PrefManager.xAppDevice = getDeviceCode(true)
+            useSystemDeviceInfo()
         return PrefManager.xAppDevice
     }
 
