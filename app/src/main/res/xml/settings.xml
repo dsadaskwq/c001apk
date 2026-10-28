@@ -101,6 +101,16 @@
             android:icon="@drawable/ic_clean"
             android:key="clearCache"
             android:title="@string/clear_cache" />
+        <Preference
+            android:icon="@drawable/outline_file_upload_24"
+            android:key="backupAccount"
+            android:summary="@string/backup_account_summary"
+            android:title="@string/backup_account" />
+        <Preference
+            android:icon="@drawable/outline_file_download_24"
+            android:key="restoreAccount"
+            android:summary="@string/restore_account_summary"
+            android:title="@string/restore_account" />
     </PreferenceCategory>
 
 </PreferenceScreen>
